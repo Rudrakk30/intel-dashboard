@@ -114,7 +114,7 @@ export default function HomePage() {
               : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:text-[#065F46] dark:hover:text-[#065F46]'
           }`}
         >
-          Latest
+          Latest Top News
         </button>
         <button 
           onClick={() => setFilter('7d')}
