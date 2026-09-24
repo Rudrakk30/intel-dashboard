@@ -1,68 +1,25 @@
-import { GoogleGenAI, Type, Schema } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import type { Article, Event } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.AI_API_KEY });
 
-const EventSchema: Schema = {
-  type: Type.ARRAY,
-  description: "A list of distinct intelligence events extracted from the articles.",
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      headline: {
-        type: Type.STRING,
-        description: "A professional, objective headline summarizing the event."
-      },
-      summary: {
-        type: Type.STRING,
-        description: "A concise 2-4 sentence summary of what happened."
-      },
-      why_it_matters: {
-        type: Type.STRING,
-        description: "A short explanation of the significance of this event."
-      },
-      category: {
-        type: Type.STRING,
-        description: "One of: AI, Fintech, Technology, Finance, Startups, Other"
-      },
-      subcategory: {
-        type: Type.STRING,
-        description: "A more specific category (e.g. 'Semiconductors', 'Venture Capital', 'Regulation')"
-      },
-      importance_score: {
-        type: Type.INTEGER,
-        description: "An importance score from 1-100 based on reach, impact, novelty, and market significance."
-      },
-      entities: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "List of major companies, organizations, or people involved."
-      },
-      article_ids: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "The original IDs of the articles that are part of this event cluster."
-      }
-    },
-    required: ["headline", "summary", "why_it_matters", "category", "importance_score", "article_ids"]
-  }
-};
-
 const SYSTEM_INSTRUCTION = `
 You are INTEL, an expert global intelligence analyst.
-Your task is to analyze a batch of recently published articles and extract the core "Events".
-An event is a distinct, significant development. Multiple articles covering the same story must be clustered into ONE EVENT.
-Ignore noise, opinion pieces, and minor updates. Prioritize signal over noise.
+Analyze the articles below and extract distinct "Events" (significant developments).
+Multiple articles about the same story must be merged into ONE event.
+Ignore noise, opinion, and minor updates.
 
-Evaluate importance (1-100) based on:
-1. Impact (industry, market, technology)
-2. Reach (global vs regional)
-3. Business significance (IPOs, M&A, major product launches)
-4. Novelty
-5. Source quality and cross-source confirmation
+For each event provide:
+- headline: Professional, objective headline
+- summary: 2-4 sentence summary
+- why_it_matters: Short significance explanation
+- category: One of: AI, Fintech, Technology, Finance, Startups
+- subcategory: More specific (e.g. Semiconductors, Venture Capital)
+- importance_score: 1-100 based on impact, reach, novelty
+- article_ids: Array of article IDs this event was derived from
 
-Return a structured JSON list of these events. Make sure to map each event to the exact 'article_id's it was derived from.
-[SYSTEM INSTRUCTION END]
+Return ONLY a valid JSON array of event objects. No markdown, no code fences.
+Example: [{"headline":"...","summary":"...","why_it_matters":"...","category":"AI","subcategory":"LLMs","importance_score":85,"article_ids":["id1","id2"]}]
 `;
 
 export async function extractAndClusterEvents(articles: Article[]): Promise<{
@@ -73,43 +30,48 @@ export async function extractAndClusterEvents(articles: Article[]): Promise<{
 
   console.log(`[AI Engine] Analyzing ${articles.length} articles...`);
 
-  // Prepare input text safely to prevent prompt injection
-  const articlesInput = articles.map(a => `
-Article ID: ${a.id}
-Title: ${a.title}
-Published: ${a.published_at}
-Description: ${a.description}
----`).join('\\n');
+  const articlesInput = articles.map(a => 
+    `Article ID: ${a.id}\nTitle: ${a.title}\nPublished: ${a.published_at}\nDescription: ${a.description || 'N/A'}\n---`
+  ).join('\n');
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3.6-flash',
-      contents: `[ARTICLE CONTENT BEGIN]\n${articlesInput}\n[ARTICLE CONTENT END]`,
+      contents: `Analyze these articles and return a JSON array of events:\n\n${articlesInput}`,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: 'application/json',
-        responseSchema: EventSchema,
-        temperature: 0.1, // Keep it objective and deterministic
+        temperature: 0.1,
       }
     });
 
-    const outputText = response.text;
+    let outputText = response.text || '';
+    console.log(`[AI Engine] Raw response length: ${outputText.length}`);
+    
+    // Clean up response - remove markdown code fences if present
+    outputText = outputText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    
     if (!outputText) throw new Error("Empty response from AI");
 
     const parsedEvents = JSON.parse(outputText);
     
+    if (!Array.isArray(parsedEvents)) {
+      console.error('[AI Engine] Response is not an array');
+      return { events: [], articleToEventMap: {} };
+    }
+
+    console.log(`[AI Engine] Parsed ${parsedEvents.length} events`);
+
     const events: Partial<Event>[] = [];
     const articleToEventMap: Record<string, number> = {};
 
     parsedEvents.forEach((aiEvent: any, index: number) => {
-      // Create Event Record
       events.push({
         headline: aiEvent.headline,
         summary: aiEvent.summary,
         why_it_matters: aiEvent.why_it_matters,
         category: aiEvent.category,
         subcategory: aiEvent.subcategory || null,
-        event_time: new Date().toISOString(), // In real app, calculate from earliest article
+        event_time: new Date().toISOString(),
         first_seen: new Date().toISOString(),
         last_updated: new Date().toISOString(),
         importance_score: aiEvent.importance_score,
@@ -117,7 +79,6 @@ Description: ${a.description}
         is_published: true,
       });
 
-      // Map back to articles
       if (aiEvent.article_ids && Array.isArray(aiEvent.article_ids)) {
         aiEvent.article_ids.forEach((id: string) => {
           articleToEventMap[id] = index;
@@ -128,7 +89,7 @@ Description: ${a.description}
     return { events, articleToEventMap };
 
   } catch (error) {
-    console.error("AI Clustering failed:", error);
+    console.error("[AI Clustering failed]:", error);
     return { events: [], articleToEventMap: {} };
   }
 }
