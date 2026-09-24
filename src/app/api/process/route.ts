@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { processPendingArticles } from '@/lib/events';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
     }
 
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    const expectedHeader = `Bearer ${cronSecret}`;
+    const authBuffer = Buffer.from(authHeader || '');
+    const expectedBuffer = Buffer.from(expectedHeader);
+
+    if (authBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(authBuffer, expectedBuffer)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
