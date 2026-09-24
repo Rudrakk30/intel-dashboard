@@ -5,8 +5,6 @@ import type { Event } from '@/types';
 const mockCategoryEvents: Record<string, Event[]> = {
   ai: [
     {
-      
-    {
       id: '101', headline: 'Hugging Face Hits 1 Million Models', summary: 'The open-source AI platform has crossed a massive milestone in user-uploaded models.', category: 'AI', event_time: new Date(Date.now() - 50000000).toISOString(), importance_score: 60, is_published: true, primary_url: 'https://techcrunch.com/huggingface'
     },
     {
@@ -17,8 +15,6 @@ const mockCategoryEvents: Record<string, Event[]> = {
     }
   ],
   fintech: [
-    {
-      
     {
       id: '201', headline: 'Robinhood Unveils Gold Credit Card', summary: 'Robinhood is expanding into traditional finance with a 3% cash back credit card.', category: 'Fintech', event_time: new Date(Date.now() - 43200000).toISOString(), importance_score: 65, is_published: true, primary_url: 'https://techcrunch.com/robinhood'
     },
