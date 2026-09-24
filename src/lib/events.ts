@@ -88,16 +88,34 @@ export async function processPendingArticles() {
       };
     });
 
-    const { data: inserted, error: directErr } = await supabase
+    // Deduplicate against existing events in the database
+    const { data: existingEvents } = await supabase
       .from('events')
-      .insert(directEvents)
-      .select('id');
+      .select('headline')
+      .limit(200);
 
-    if (directErr) {
-      console.error('Error creating direct events:', directErr);
+    const existingHeadlines = new Set(
+      (existingEvents || []).map(e => e.headline?.trim().toLowerCase())
+    );
+
+    const newDirectEvents = directEvents.filter(
+      e => !existingHeadlines.has(e.headline?.trim().toLowerCase())
+    );
+
+    if (newDirectEvents.length > 0) {
+      const { data: inserted, error: directErr } = await supabase
+        .from('events')
+        .insert(newDirectEvents)
+        .select('id');
+
+      if (directErr) {
+        console.error('Error creating direct events:', directErr);
+      } else {
+        eventsCreated = inserted?.length || 0;
+        console.log(`Created ${eventsCreated} new direct events`);
+      }
     } else {
-      eventsCreated = inserted?.length || 0;
-      console.log(`Created ${eventsCreated} events directly from articles`);
+      console.log('All articles already exist as events. No duplicates inserted.');
     }
   }
 

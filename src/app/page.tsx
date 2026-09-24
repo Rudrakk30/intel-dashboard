@@ -20,7 +20,14 @@ export default async function HomePage() {
     console.error('Error fetching live events:', error);
   }
 
-  const liveEvents = (data as Event[]) || [];
+  // Deduplicate events by headline/url to guarantee no duplicate cards
+  const seenHeadlines = new Set<string>();
+  const liveEvents = ((data as Event[]) || []).filter(item => {
+    const key = (item.headline || item.primary_url || item.id).trim().toLowerCase();
+    if (seenHeadlines.has(key)) return false;
+    seenHeadlines.add(key);
+    return true;
+  });
 
   // We pass the live data down to the client component which handles the tabs/filtering
   return <HomePageClient initialEvents={liveEvents} />;

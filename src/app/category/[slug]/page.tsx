@@ -42,7 +42,14 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     console.error('Error fetching category events:', error);
   }
 
-  const events = (data as Event[]) || [];
+  // Deduplicate events by headline/url to guarantee no duplicate cards
+  const seenHeadlines = new Set<string>();
+  const events = ((data as Event[]) || []).filter(item => {
+    const key = (item.headline || item.primary_url || item.id).trim().toLowerCase();
+    if (seenHeadlines.has(key)) return false;
+    seenHeadlines.add(key);
+    return true;
+  });
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-4">
