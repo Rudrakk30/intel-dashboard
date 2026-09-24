@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const diagnostics: any = {
       environment: {
-        hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
         hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
         hasSupabaseServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
         hasAiApiKey: !!process.env.AI_API_KEY,
