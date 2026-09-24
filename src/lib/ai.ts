@@ -83,7 +83,7 @@ Description: ${a.description}
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: `[ARTICLE CONTENT BEGIN]\n${articlesInput}\n[ARTICLE CONTENT END]`,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
