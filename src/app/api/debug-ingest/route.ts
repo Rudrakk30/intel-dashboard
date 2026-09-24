@@ -16,21 +16,14 @@ export async function GET() {
   const log: string[] = [];
 
   try {
-    // Step 1: Get first active source
+    // Step 1: Get unique active sources
     const { data: sources } = await supabase
       .from('sources')
       .select('*')
-      .eq('is_active', true)
-      .limit(3);
+      .eq('is_active', true);
 
-    if (!sources || sources.length === 0) {
-      log.push('No active sources found');
-      return NextResponse.json({ log });
-    }
-
-    // Deduplicate sources by feed_url
     const seen = new Set<string>();
-    const uniqueSources = sources.filter(s => {
+    const uniqueSources = (sources || []).filter(s => {
       if (!s.feed_url || seen.has(s.feed_url)) return false;
       seen.add(s.feed_url);
       return true;
@@ -38,26 +31,19 @@ export async function GET() {
 
     log.push(`Processing ${uniqueSources.length} unique sources`);
 
-    let totalInserted = 0;
-
+    // Step 2: Fetch and insert articles
     for (const source of uniqueSources) {
-      log.push(`\nFetching: ${source.name} (${source.feed_url})`);
-
       try {
         const feed = await parser.parseURL(source.feed_url);
-        log.push(`  Got ${feed.items?.length || 0} RSS items`);
+        log.push(`${source.name}: ${feed.items?.length || 0} items`);
 
-        if (!feed.items || feed.items.length === 0) continue;
-
-        // Insert articles one by one to catch exact errors
-        for (const item of feed.items.slice(0, 10)) {
+        for (const item of (feed.items || []).slice(0, 15)) {
           if (!item.link || !item.title) continue;
-
           const hash = crypto.createHash('sha256')
             .update(`${item.link.trim()}::${item.title.trim()}`)
             .digest('hex');
 
-          const article = {
+          await supabase.from('articles').upsert([{
             source_id: source.id,
             title: item.title,
             url: item.link,
@@ -65,96 +51,103 @@ export async function GET() {
             content_hash: hash,
             published_at: item.isoDate || null,
             processed_status: 'pending',
-          };
-
-          const { data: inserted, error: insertErr } = await supabase
-            .from('articles')
-            .upsert([article], { onConflict: 'content_hash', ignoreDuplicates: true })
-            .select('id');
-
-          if (insertErr) {
-            log.push(`  ERROR inserting "${item.title?.slice(0, 40)}": ${JSON.stringify(insertErr)}`);
-            break; // Stop on first error to see it
-          } else if (inserted && inserted.length > 0) {
-            totalInserted++;
-          }
+          }], { onConflict: 'content_hash', ignoreDuplicates: true });
         }
-      } catch (rssErr: any) {
-        log.push(`  RSS ERROR: ${rssErr.message}`);
+      } catch (e: any) {
+        log.push(`RSS error for ${source.name}: ${e.message}`);
       }
     }
 
-    log.push(`\nTotal articles inserted: ${totalInserted}`);
-
-    // Check total articles
-    const { count } = await supabase
+    // Step 3: Get all pending articles
+    const { data: pendingArticles } = await supabase
       .from('articles')
-      .select('*', { count: 'exact', head: true });
-    log.push(`Total articles in DB: ${count}`);
+      .select('*')
+      .eq('processed_status', 'pending')
+      .order('published_at', { ascending: false })
+      .limit(50);
 
-    // Check pending articles
-    const { count: pendingCount, error: pendErr } = await supabase
-      .from('articles')
-      .select('*', { count: 'exact', head: true })
-      .eq('processed_status', 'pending');
-    log.push(`Pending articles: ${pendErr ? JSON.stringify(pendErr) : pendingCount}`);
+    log.push(`Pending articles: ${pendingArticles?.length || 0}`);
 
-    // If we have pending articles, run AI
-    if (pendingCount && pendingCount > 0) {
-      log.push('\n--- Running AI clustering ---');
+    if (!pendingArticles || pendingArticles.length === 0) {
+      return NextResponse.json({ log });
+    }
+
+    // Step 4: Try AI first
+    log.push('--- Attempting AI clustering ---');
+    let aiWorked = false;
+    try {
+      const { events } = await extractAndClusterEvents(pendingArticles as any);
+      log.push(`AI returned ${events.length} events`);
       
-      const { data: pendingArticles } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('processed_status', 'pending')
-        .limit(30);
-
-      if (pendingArticles && pendingArticles.length > 0) {
-        try {
-          const { events } = await extractAndClusterEvents(pendingArticles as any);
-          log.push(`AI generated ${events.length} events`);
-
-          if (events.length > 0) {
-            // Add primary_url from first article for each event
-            const eventsWithUrl = events.map(e => ({
-              ...e,
-              primary_url: pendingArticles[0]?.url || null,
-            }));
-
-            const { data: insertedEvents, error: evtErr } = await supabase
-              .from('events')
-              .insert(eventsWithUrl)
-              .select('id');
-
-            if (evtErr) {
-              log.push(`ERROR inserting events: ${JSON.stringify(evtErr)}`);
-            } else {
-              log.push(`SUCCESS! Inserted ${insertedEvents?.length} events`);
-
-              // Mark articles as processed
-              const articleIds = pendingArticles.map(a => a.id);
-              await supabase
-                .from('articles')
-                .update({ processed_status: 'clustered' })
-                .in('id', articleIds);
-            }
-          }
-        } catch (aiErr: any) {
-          log.push(`AI ERROR: ${aiErr.message}`);
+      if (events.length > 0) {
+        aiWorked = true;
+        const eventsWithUrl = events.map((e, i) => ({
+          ...e,
+          primary_url: pendingArticles[i]?.url || pendingArticles[0]?.url || null,
+        }));
+        const { error: evtErr } = await supabase.from('events').insert(eventsWithUrl);
+        if (evtErr) {
+          log.push(`Event insert error: ${JSON.stringify(evtErr)}`);
+          aiWorked = false;
+        } else {
+          log.push(`Inserted ${events.length} AI events`);
         }
+      }
+    } catch (aiErr: any) {
+      log.push(`AI FAILED: ${aiErr.message}`);
+    }
+
+    // Step 5: If AI failed, create events directly from articles
+    if (!aiWorked) {
+      log.push('--- AI failed, creating events directly from articles ---');
+      
+      const categoryMap: Record<string, string> = {
+        'techcrunch.com': 'Technology',
+        'cnbc.com': 'Finance',
+        'wired.com': 'AI',
+      };
+
+      const directEvents = pendingArticles.map(article => {
+        const domain = Object.keys(categoryMap).find(d => article.url?.includes(d)) || '';
+        return {
+          headline: article.title,
+          summary: article.description || article.title,
+          category: categoryMap[domain] || 'Technology',
+          event_time: article.published_at || new Date().toISOString(),
+          first_seen: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
+          importance_score: 75,
+          is_published: true,
+          primary_url: article.url,
+        };
+      });
+
+      const { data: insertedEvents, error: directErr } = await supabase
+        .from('events')
+        .insert(directEvents)
+        .select('id');
+
+      if (directErr) {
+        log.push(`Direct insert error: ${JSON.stringify(directErr)}`);
+      } else {
+        log.push(`SUCCESS! Created ${insertedEvents?.length} events directly from articles`);
       }
     }
 
-    // Final counts
+    // Mark all as processed
+    const articleIds = pendingArticles.map(a => a.id);
+    await supabase.from('articles').update({ processed_status: 'clustered' }).in('id', articleIds);
+
+    // Final count
     const { count: finalEvents } = await supabase
       .from('events')
       .select('*', { count: 'exact', head: true });
-    log.push(`\nFinal event count: ${finalEvents}`);
+    log.push(`\nFinal event count in DB: ${finalEvents}`);
 
     return NextResponse.json({ log });
 
   } catch (error: any) {
-    log.push(`FATAL: ${error.message}`);
+    log.push(`FATAL: ${error.message}\n${error.stack}`);
     return NextResponse.json({ log });
   }
 }
