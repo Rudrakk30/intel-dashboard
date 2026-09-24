@@ -4,18 +4,36 @@ import type { Event } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
+// Map URL slugs to the actual categories stored in the database
+const categoryMapping: Record<string, string[]> = {
+  ai: ['AI', 'Artificial Intelligence'],
+  fintech: ['Fintech', 'Finance', 'Financial'],
+  technology: ['Technology', 'Tech'],
+  finance: ['Finance', 'Fintech', 'Financial'],
+  startups: ['Startups', 'Startup', 'Technology'],
+};
+
+const titleMapping: Record<string, string> = {
+  ai: 'Artificial Intelligence',
+  fintech: 'Fintech',
+  technology: 'Technology',
+  finance: 'Finance',
+  startups: 'Startups',
+};
+
 // Server Component fetching live data for categories
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params;
   const { slug } = resolvedParams;
   
-  const title = slug.charAt(0).toUpperCase() + slug.slice(1);
+  const title = titleMapping[slug] || slug.charAt(0).toUpperCase() + slug.slice(1);
+  const categories = categoryMapping[slug] || [slug];
   
-  // Fetch live events for this specific category from Supabase
+  // Fetch live events matching any of the mapped categories
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .ilike('category', slug)
+    .in('category', categories)
     .eq('is_published', true)
     .order('event_time', { ascending: false })
     .limit(50);
@@ -32,7 +50,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <div>
           <h1 className="text-4xl font-serif font-black text-gray-900 dark:text-white mb-2 tracking-tight">{title}</h1>
           <p className="text-sm text-gray-500 font-medium">
-            Live developments in {title}
+            Live developments in {title} — <span className="font-semibold text-gray-900 dark:text-gray-300">{events.length} developments</span>
           </p>
         </div>
       </section>
