@@ -2,6 +2,9 @@ import { supabase } from '@/lib/db';
 import { HomePageClient } from '@/components/events/HomePageClient';
 import type { Event } from '@/types';
 
+// Force this page to always fetch fresh data on every request
+export const dynamic = 'force-dynamic';
+
 // This is a Server Component. It securely fetches data directly from the Supabase database
 // before the page even loads for the user, ensuring blazing fast load times and great SEO.
 export default async function HomePage() {

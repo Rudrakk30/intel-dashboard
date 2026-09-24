@@ -2,6 +2,8 @@ import { EventCard } from '@/components/events/EventCard';
 import { supabase } from '@/lib/db';
 import type { Event } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 // Server Component fetching live data for categories
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params;
