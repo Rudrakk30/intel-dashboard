@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/globe-2.svg" alt="INTEL Logo" width="120" height="120">
+  
+  <h1 align="center">INTEL Dashboard ⚡️</h1>
 
-## Getting Started
+  <p align="center">
+    <strong>A high-speed, automated intelligence dashboard for global markets, startups, and tech.</strong>
+  </p>
 
-First, run the development server:
+  <p align="center">
+    <a href="https://intel-dashboard-6t7a.onrender.com/"><img src="https://img.shields.io/badge/Live_Demo-065F46?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" /></a>
+    <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 15" /></a>
+    <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind_CSS_v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS v4" /></a>
+    <a href="https://supabase.com/"><img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" /></a>
+  </p>
+</div>
 
+<br />
+
+## 🚀 Welcome to INTEL
+
+**INTEL** is a fully automated, AI-powered intelligence feed that curates the most critical news across Artificial Intelligence, Fintech, Finance, and Startups. Built for speed and focus, it strips away the noise and delivers high-signal developments directly to your dashboard.
+
+No images. No clutter. Just pure information.
+
+---
+
+## ✨ Features
+
+- 🧠 **AI-Powered Curation**: Uses LLMs to ingest, score, and summarize news from dozens of RSS feeds.
+- ⚡️ **Blazing Fast UI**: Built on Next.js 15 and Tailwind v4 for sub-second page loads.
+- 🌙 **Sleek Dark Mode**: A beautiful, distraction-free reading experience that respects your system settings.
+- 📌 **Local Bookmarks**: Save critical intelligence directly to your browser for later review.
+- 🗄️ **Supabase Backend**: Postgres-backed database for persistent event storage and AI metadata.
+- ⏱️ **Automated Ingestion**: GitHub Actions automatically run cron jobs to fetch new data every 6 hours.
+
+---
+
+## 🛠️ Tech Stack
+
+| Category | Technology |
+| --- | --- |
+| **Frontend** | Next.js 15, React 19, Tailwind CSS v4, Lucide Icons |
+| **State Management** | Zustand (Local Storage Persist) |
+| **Backend** | Next.js API Routes (Serverless) |
+| **Database** | Supabase (PostgreSQL) |
+| **AI / NLP** | OpenAI / Anthropic API (Data extraction & scoring) |
+| **Automation** | GitHub Actions (Cron) |
+
+---
+
+## 🚦 Getting Started
+
+To run the INTEL dashboard locally on your machine, follow these steps:
+
+### 1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/Rudrakk30/intel-dashboard.git
+cd intel-dashboard
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Set up environment variables
+Copy the example environment file and fill in your Supabase credentials:
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Run the development server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the dashboard.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📸 Sneak Peek
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+<div align="center">
+  <blockquote>
+    "Information is the oil of the 21st century, and analytics is the combustion engine."
+  </blockquote>
+</div>
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+<br />
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+<div align="center">
+  <p>Built with 💚 by <strong>Rudrakk30</strong></p>
+</div>
