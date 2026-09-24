@@ -5,33 +5,33 @@ import type { Event } from '@/types';
 const mockCategoryEvents: Record<string, Event[]> = {
   ai: [
     {
-      id: '1', headline: 'Anthropic Releases Claude 3.5 Sonnet', summary: 'Anthropic has announced the release of Claude 3.5 Sonnet.', category: 'AI', event_time: new Date().toISOString(), importance_score: 95, is_published: true, primary_url: 'https://anthropic.com'
+      id: '1', headline: 'Anthropic Releases Claude 3.5 Sonnet', summary: 'Anthropic has announced the release of Claude 3.5 Sonnet.', category: 'AI', event_time: new Date().toISOString(), importance_score: 95, is_published: true, primary_url: 'https://techcrunch.com/2024/06/20/anthropic-releases-claude-3-5-sonnet/'
     }
   ],
   fintech: [
     {
-      id: '2', headline: 'Stripe Acquires Bridge for $1.1 Billion', summary: 'Stripe has completed its acquisition of Bridge.', category: 'Fintech', event_time: new Date().toISOString(), importance_score: 85, is_published: true, primary_url: 'https://stripe.com'
+      id: '2', headline: 'Stripe Acquires Bridge for $1.1 Billion', summary: 'Stripe has completed its acquisition of Bridge.', category: 'Fintech', event_time: new Date().toISOString(), importance_score: 85, is_published: true, primary_url: 'https://www.wsj.com/tech/stripe-acquires-bridge-1-1-billion/'
     }
   ],
   technology: [
     {
-      id: '3', headline: 'Nvidia Blackwell Production Reaches Full Capacity', summary: 'Nvidia has reportedly overcome its packaging bottlenecks.', category: 'Technology', event_time: new Date().toISOString(), importance_score: 97, is_published: true, primary_url: 'https://nvidia.com'
+      id: '3', headline: 'Nvidia Blackwell Production Reaches Full Capacity', summary: 'Nvidia has reportedly overcome its packaging bottlenecks.', category: 'Technology', event_time: new Date().toISOString(), importance_score: 97, is_published: true, primary_url: 'https://www.cnbc.com/2024/05/22/nvidia-blackwell-production-capacity/'
     },
     {
-      id: '4', headline: 'Apple Intelligence Rolling out to EU Devices', summary: 'After months of regulatory delays, Apple is beginning a phased rollout.', category: 'Technology', event_time: new Date(Date.now() - 86400000).toISOString(), importance_score: 89, is_published: true, primary_url: 'https://apple.com'
+      id: '4', headline: 'Apple Intelligence Rolling out to EU Devices', summary: 'After months of regulatory delays, Apple is beginning a phased rollout.', category: 'Technology', event_time: new Date(Date.now() - 86400000).toISOString(), importance_score: 89, is_published: true, primary_url: 'https://9to5mac.com/2024/06/21/apple-intelligence-eu-rollout/'
     }
   ],
   finance: [
     {
-      id: '5', headline: 'Federal Reserve Cuts Interest Rates by 50 bps', summary: 'The Federal Reserve has aggressively cut its benchmark interest rate.', category: 'Finance', event_time: new Date().toISOString(), importance_score: 100, is_published: true, primary_url: 'https://federalreserve.gov'
+      id: '5', headline: 'Federal Reserve Cuts Interest Rates by 50 bps', summary: 'The Federal Reserve has aggressively cut its benchmark interest rate.', category: 'Finance', event_time: new Date().toISOString(), importance_score: 100, is_published: true, primary_url: 'https://www.wsj.com/economy/central-banking/federal-reserve-cuts-interest-rates-50-bps/'
     },
     {
-      id: '6', headline: 'Klarna Files Confidentially for US IPO', summary: 'The Swedish buy-now-pay-later giant has confidentially submitted a draft.', category: 'Finance', event_time: new Date(Date.now() - 172800000).toISOString(), importance_score: 93, is_published: true, primary_url: 'https://klarna.com'
+      id: '6', headline: 'Klarna Files Confidentially for US IPO', summary: 'The Swedish buy-now-pay-later giant has confidentially submitted a draft.', category: 'Finance', event_time: new Date(Date.now() - 172800000).toISOString(), importance_score: 93, is_published: true, primary_url: 'https://www.ft.com/content/klarna-files-confidentially-for-us-ipo/'
     }
   ],
   startups: [
     {
-      id: '7', headline: 'Y Combinator Winter Batch Shows 70% AI Focus', summary: 'Analysis of the latest YC batch reveals that over 70% of participating startups are AI focused.', category: 'Startups', event_time: new Date().toISOString(), importance_score: 80, is_published: true, primary_url: 'https://ycombinator.com'
+      id: '7', headline: 'Y Combinator Winter Batch Shows 70% AI Focus', summary: 'Analysis of the latest YC batch reveals that over 70% of participating startups are AI focused.', category: 'Startups', event_time: new Date().toISOString(), importance_score: 80, is_published: true, primary_url: 'https://techcrunch.com/2024/03/10/yc-winter-batch-ai-focus/'
     },
     {
       id: '8', headline: 'Physical Intelligence Raises $400M at $2B Valuation', summary: 'Robotics foundation model startup Physical Intelligence has raised a massive $400 million seed round.', category: 'Startups', event_time: new Date(Date.now() - 86400000).toISOString(), importance_score: 83, is_published: true, primary_url: 'https://techcrunch.com'
