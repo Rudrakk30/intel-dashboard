@@ -1,0 +1,23 @@
+name: INTEL Ingestion Pipeline
+
+on:
+  schedule:
+    # Runs every hour at the top of the hour
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Ingest API (Fetch RSS & Deduplicate)
+        run: |
+          curl -f -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_TOKEN }}" \
+            ${{ secrets.PRODUCTION_URL }}/api/ingest
+
+      - name: Trigger Event Engine API (AI Clustering)
+        run: |
+          curl -f -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_TOKEN }}" \
+            ${{ secrets.PRODUCTION_URL }}/api/process
