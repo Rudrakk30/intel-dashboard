@@ -16,7 +16,19 @@ export async function GET() {
   const log: string[] = [];
 
   try {
-    // Step 1: Get unique active sources
+    // Step 0: Reset all articles to pending so AI can reprocess them
+    const { error: resetErr } = await supabase
+      .from('articles')
+      .update({ processed_status: 'pending' })
+      .neq('processed_status', 'pending');
+    
+    if (resetErr) {
+      log.push(`Reset error: ${JSON.stringify(resetErr)}`);
+    } else {
+      log.push('Reset all articles to pending');
+    }
+
+    // Step 1: Get unique active sources and fetch new articles
     const { data: sources } = await supabase
       .from('sources')
       .select('*')
@@ -29,9 +41,6 @@ export async function GET() {
       return true;
     });
 
-    log.push(`Processing ${uniqueSources.length} unique sources`);
-
-    // Step 2: Fetch and insert articles
     for (const source of uniqueSources) {
       try {
         const feed = await parser.parseURL(source.feed_url);
@@ -54,100 +63,105 @@ export async function GET() {
           }], { onConflict: 'content_hash', ignoreDuplicates: true });
         }
       } catch (e: any) {
-        log.push(`RSS error for ${source.name}: ${e.message}`);
+        log.push(`RSS error: ${e.message}`);
       }
     }
 
-    // Step 3: Get all pending articles
+    // Step 2: Get all pending articles
     const { data: pendingArticles } = await supabase
       .from('articles')
       .select('*')
       .eq('processed_status', 'pending')
       .order('published_at', { ascending: false })
-      .limit(50);
+      .limit(30);
 
-    log.push(`Pending articles: ${pendingArticles?.length || 0}`);
+    log.push(`Pending articles for AI: ${pendingArticles?.length || 0}`);
 
     if (!pendingArticles || pendingArticles.length === 0) {
       return NextResponse.json({ log });
     }
 
-    // Step 4: Try AI first
-    log.push('--- Attempting AI clustering ---');
-    let aiWorked = false;
+    // Step 3: Run AI clustering
+    log.push('--- Running Gemini 3.6 Flash AI ---');
     try {
       const { events } = await extractAndClusterEvents(pendingArticles as any);
-      log.push(`AI returned ${events.length} events`);
-      
+      log.push(`AI generated ${events.length} events`);
+
       if (events.length > 0) {
-        aiWorked = true;
+        // Map primary_url from the first article in each cluster
         const eventsWithUrl = events.map((e, i) => ({
           ...e,
-          primary_url: pendingArticles[i]?.url || pendingArticles[0]?.url || null,
+          primary_url: pendingArticles[Math.min(i, pendingArticles.length - 1)]?.url || null,
         }));
-        const { error: evtErr } = await supabase.from('events').insert(eventsWithUrl);
+
+        const { data: inserted, error: evtErr } = await supabase
+          .from('events')
+          .insert(eventsWithUrl)
+          .select('id');
+
         if (evtErr) {
           log.push(`Event insert error: ${JSON.stringify(evtErr)}`);
-          aiWorked = false;
+          // Fallback: create events directly
+          log.push('Falling back to direct event creation...');
+          await createDirectEvents(pendingArticles, log);
         } else {
-          log.push(`Inserted ${events.length} AI events`);
+          log.push(`SUCCESS! Inserted ${inserted?.length} AI-powered events`);
         }
+      } else {
+        log.push('AI returned 0 events, falling back...');
+        await createDirectEvents(pendingArticles, log);
       }
     } catch (aiErr: any) {
-      log.push(`AI FAILED: ${aiErr.message}`);
+      log.push(`AI error: ${aiErr.message}`);
+      log.push('Falling back to direct event creation...');
+      await createDirectEvents(pendingArticles, log);
     }
 
-    // Step 5: If AI failed, create events directly from articles
-    if (!aiWorked) {
-      log.push('--- AI failed, creating events directly from articles ---');
-      
-      const categoryMap: Record<string, string> = {
-        'techcrunch.com': 'Technology',
-        'cnbc.com': 'Finance',
-        'wired.com': 'AI',
-      };
-
-      const directEvents = pendingArticles.map(article => {
-        const domain = Object.keys(categoryMap).find(d => article.url?.includes(d)) || '';
-        return {
-          headline: article.title,
-          summary: article.description || article.title,
-          category: categoryMap[domain] || 'Technology',
-          event_time: article.published_at || new Date().toISOString(),
-          first_seen: new Date().toISOString(),
-          last_updated: new Date().toISOString(),
-          importance_score: 75,
-          is_published: true,
-          primary_url: article.url,
-        };
-      });
-
-      const { data: insertedEvents, error: directErr } = await supabase
-        .from('events')
-        .insert(directEvents)
-        .select('id');
-
-      if (directErr) {
-        log.push(`Direct insert error: ${JSON.stringify(directErr)}`);
-      } else {
-        log.push(`SUCCESS! Created ${insertedEvents?.length} events directly from articles`);
-      }
-    }
-
-    // Mark all as processed
-    const articleIds = pendingArticles.map(a => a.id);
-    await supabase.from('articles').update({ processed_status: 'clustered' }).in('id', articleIds);
+    // Mark processed
+    await supabase
+      .from('articles')
+      .update({ processed_status: 'clustered' })
+      .eq('processed_status', 'pending');
 
     // Final count
-    const { count: finalEvents } = await supabase
+    const { count } = await supabase
       .from('events')
       .select('*', { count: 'exact', head: true });
-    log.push(`\nFinal event count in DB: ${finalEvents}`);
+    log.push(`\nTotal events in database: ${count}`);
 
     return NextResponse.json({ log });
-
   } catch (error: any) {
-    log.push(`FATAL: ${error.message}\n${error.stack}`);
+    log.push(`FATAL: ${error.message}`);
     return NextResponse.json({ log });
+  }
+}
+
+async function createDirectEvents(articles: any[], log: string[]) {
+  const categoryMap: Record<string, string> = {
+    'techcrunch.com': 'Technology',
+    'cnbc.com': 'Finance',
+    'wired.com': 'AI',
+  };
+
+  const events = articles.map(a => {
+    const domain = Object.keys(categoryMap).find(d => a.url?.includes(d)) || '';
+    return {
+      headline: a.title,
+      summary: a.description || a.title,
+      category: categoryMap[domain] || 'Technology',
+      event_time: a.published_at || new Date().toISOString(),
+      first_seen: new Date().toISOString(),
+      last_updated: new Date().toISOString(),
+      importance_score: 75,
+      is_published: true,
+      primary_url: a.url,
+    };
+  });
+
+  const { data, error } = await supabase.from('events').insert(events).select('id');
+  if (error) {
+    log.push(`Direct insert error: ${JSON.stringify(error)}`);
+  } else {
+    log.push(`Created ${data?.length} events directly`);
   }
 }
