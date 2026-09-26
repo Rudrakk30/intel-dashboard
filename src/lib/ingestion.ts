@@ -96,6 +96,7 @@ export async function runIngestion() {
         image_url: imageUrl,
         content_hash: hash,
         published_at: item.isoDate || item.pubDate ? new Date(item.isoDate || item.pubDate!).toISOString() : null,
+        processed_status: 'pending',
       };
 
       newArticles.push(article);

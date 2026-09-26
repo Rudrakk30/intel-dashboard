@@ -20,7 +20,9 @@ export function HomePageClient({ initialEvents }: Props) {
     let filtered = [...initialEvents];
 
     if (filter === 'latest') {
-      filtered = filtered.filter(e => isAfter(new Date(e.event_time), subDays(now, 2)));
+      const recent = filtered.filter(e => isAfter(new Date(e.event_time), subDays(now, 2)));
+      // If no news in last 2 days, fall back to recent news so the feed is never prematurely empty
+      filtered = recent.length > 0 ? recent : filtered.slice(0, 30);
     } else if (filter === '7d') {
       filtered = filtered
         .filter(e => isAfter(new Date(e.event_time), subDays(now, 7)))

@@ -43,17 +43,36 @@ export async function processPendingArticles() {
         primary_url: articles[Math.min(i, articles.length - 1)]?.url || null,
       }));
 
-      const { data: insertedEvents, error: insertEventError } = await supabase
+      // Deduplicate AI events against existing events in the database
+      const { data: existingEvents } = await supabase
         .from('events')
-        .insert(eventsWithUrl)
-        .select('id');
+        .select('headline')
+        .limit(200);
 
-      if (insertEventError) {
-        console.error('Error inserting AI events:', insertEventError);
-      } else if (insertedEvents) {
-        eventsCreated = insertedEvents.length;
+      const existingHeadlines = new Set(
+        (existingEvents || []).map(e => e.headline?.trim().toLowerCase())
+      );
+
+      const uniqueEventsWithUrl = eventsWithUrl.filter(
+        e => !existingHeadlines.has(e.headline?.trim().toLowerCase())
+      );
+
+      if (uniqueEventsWithUrl.length > 0) {
+        const { data: insertedEvents, error: insertEventError } = await supabase
+          .from('events')
+          .insert(uniqueEventsWithUrl)
+          .select('id');
+
+        if (insertEventError) {
+          console.error('Error inserting AI events:', insertEventError);
+        } else if (insertedEvents) {
+          eventsCreated = insertedEvents.length;
+          aiWorked = true;
+          console.log(`AI created ${eventsCreated} events`);
+        }
+      } else {
+        console.log('All AI events already exist in database.');
         aiWorked = true;
-        console.log(`AI created ${eventsCreated} events`);
       }
     }
   } catch (aiError) {
