@@ -107,7 +107,7 @@ export async function runIngestion() {
       const { data, error } = await supabase
         .from('articles')
         .upsert(newArticles, { 
-          onConflict: 'content_hash',
+          onConflict: 'url',
           ignoreDuplicates: true 
         })
         .select('id');
