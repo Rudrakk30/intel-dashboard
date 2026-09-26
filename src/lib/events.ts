@@ -128,7 +128,16 @@ export async function processPendingArticles() {
         .select('id');
 
       if (directErr) {
-        console.error('Error creating direct events:', directErr);
+        console.error('Error creating direct events in bulk:', JSON.stringify(directErr));
+        // Fallback: try inserting one by one so one malformed row does not break the entire batch
+        for (const singleEvent of newDirectEvents) {
+          const { error: singleErr } = await supabase.from('events').insert([singleEvent]);
+          if (!singleErr) {
+            eventsCreated++;
+          } else {
+            console.error('Single event insert error:', JSON.stringify(singleErr), singleEvent.headline);
+          }
+        }
       } else {
         eventsCreated = inserted?.length || 0;
         console.log(`Created ${eventsCreated} new direct events`);
