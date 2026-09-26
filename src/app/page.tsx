@@ -22,9 +22,12 @@ export default async function HomePage() {
 
   let eventsList = (data as Event[]) || [];
 
-  // Self-healing: if events list is empty, trigger an automatic ingestion
-  // so the dashboard never stays blank even if cron is pending.
-  if (eventsList.length === 0) {
+  // Auto-refresh: If database has no events OR if the freshest event is older than 2 hours,
+  // trigger an automatic ingestion in the background so news is always up-to-date.
+  const freshestEventTime = eventsList[0]?.event_time ? new Date(eventsList[0].event_time).getTime() : 0;
+  const isStale = Date.now() - freshestEventTime > 2 * 60 * 60 * 1000;
+
+  if (eventsList.length === 0 || isStale) {
     try {
       const { runIngestion } = await import('@/lib/ingestion');
       await runIngestion();
@@ -38,7 +41,7 @@ export default async function HomePage() {
         eventsList = refetched as Event[];
       }
     } catch (ingestErr) {
-      console.error('Auto-healing ingestion failed:', ingestErr);
+      console.error('Auto-refresh ingestion failed:', ingestErr);
     }
   }
 
