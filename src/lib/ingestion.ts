@@ -93,7 +93,6 @@ export async function runIngestion() {
         title: item.title,
         url: item.link,
         description: item.contentSnippet || item.content || item.summary || null,
-        image_url: imageUrl,
         content_hash: hash,
         published_at: item.isoDate || item.pubDate ? new Date(item.isoDate || item.pubDate!).toISOString() : null,
         processed_status: 'pending',
