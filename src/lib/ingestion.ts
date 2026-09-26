@@ -129,5 +129,16 @@ export async function runIngestion() {
   }
 
   console.log(`Ingestion completed. Total new articles: ${totalIngested}`);
+  
+  // Automatically trigger event clustering whenever new articles arrive
+  if (totalIngested > 0) {
+    try {
+      const { processPendingArticles } = await import('./events');
+      await processPendingArticles();
+    } catch (procErr) {
+      console.error('Auto event processing error after ingestion:', procErr);
+    }
+  }
+
   return { success: true, articlesIngested: totalIngested };
 }

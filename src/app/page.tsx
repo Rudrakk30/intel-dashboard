@@ -20,9 +20,31 @@ export default async function HomePage() {
     console.error('Error fetching live events:', error);
   }
 
+  let eventsList = (data as Event[]) || [];
+
+  // Self-healing: if events list is empty, trigger an automatic ingestion
+  // so the dashboard never stays blank even if cron is pending.
+  if (eventsList.length === 0) {
+    try {
+      const { runIngestion } = await import('@/lib/ingestion');
+      await runIngestion();
+      const { data: refetched } = await supabase
+        .from('events')
+        .select('*')
+        .eq('is_published', true)
+        .order('event_time', { ascending: false })
+        .limit(100);
+      if (refetched && refetched.length > 0) {
+        eventsList = refetched as Event[];
+      }
+    } catch (ingestErr) {
+      console.error('Auto-healing ingestion failed:', ingestErr);
+    }
+  }
+
   // Deduplicate events by headline/url to guarantee no duplicate cards
   const seenHeadlines = new Set<string>();
-  const liveEvents = ((data as Event[]) || []).filter(item => {
+  const liveEvents = eventsList.filter(item => {
     const key = (item.headline || item.primary_url || item.id).trim().toLowerCase();
     if (seenHeadlines.has(key)) return false;
     seenHeadlines.add(key);
